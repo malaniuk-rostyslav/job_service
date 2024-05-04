@@ -8,7 +8,6 @@ class EmployerObject(ObjectType):
     industry = String()
     jobs = List(lambda: JobObject)
 
-
     @staticmethod
     def resolve_jobs(root, info):
         return root.jobs
@@ -20,7 +19,6 @@ class JobObject(ObjectType):
     description = String()
     employer_id = Int()
     employer = Field(lambda: EmployerObject)
-
 
     @staticmethod
     def resolve_employer(root, info):
