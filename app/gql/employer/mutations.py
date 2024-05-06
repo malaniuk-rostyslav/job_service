@@ -1,9 +1,11 @@
 from graphene import Mutation, String, Field, Int, Boolean
 from graphql import GraphQLError
 from app.gql.types import EmployerObject
-from app.db.database import Session
+from app.db.database import get_async_session
 from app.db.models import Employer
 from app.utils import admin_user
+from sqlalchemy import select
+
 
 class AddEmployer(Mutation):
     class Arguments:
@@ -14,13 +16,14 @@ class AddEmployer(Mutation):
     employer = Field(EmployerObject)
 
     @admin_user
-    def mutate(root, info, name, contact_email, industry):
-        with Session() as session:
-            employer = Employer(name=name, contact_email=contact_email, industry=industry)
-            session.add(employer)
-            session.commit()
-            session.refresh(employer)
-            return AddEmployer(employer=employer)
+    async def mutate(root, info, name, contact_email, industry):
+        session = await get_async_session()
+        employer = Employer(name=name, contact_email=contact_email, industry=industry)
+        session.add(employer)
+        await session.commit()
+        await session.refresh(employer)
+        await session.close()
+        return AddEmployer(employer=employer)
 
 
 class UpdateEmployer(Mutation):
@@ -33,39 +36,43 @@ class UpdateEmployer(Mutation):
     employer = Field(EmployerObject)
 
     @admin_user
-    def mutate(root, info, employer_id, name=None, contact_email=None, industry=None):
-        with Session() as session:
-            employer = session.query(Employer).filter(Employer.id==employer_id).first()
+    async def mutate(root, info, employer_id, name=None, contact_email=None, industry=None):
+        session = await get_async_session()
+        result = await session.execute(select(Employer).where(Employer.id == employer_id))
+        employer = result.scalars().first()
 
-            if not employer:
-                raise GraphQLError("Employer not found")
+        if not employer:
+            raise GraphQLError("Employer not found")
 
-            if name:
-                employer.name = name
-            if contact_email:
-                employer.contact_email = contact_email
-            if industry:
-                employer.industry = industry
+        if name:
+            employer.name = name
+        if contact_email:
+            employer.contact_email = contact_email
+        if industry:
+            employer.industry = industry
 
-            session.commit()
-            session.refresh(employer)
+        await session.commit()
+        await session.refresh(employer)
+        await session.close()
         return UpdateEmployer(employer=employer)
 
 
 class DeleteEmployer(Mutation):
     class Arguments:
-        id = Int(required=True)
+        employer_id = Int(required=True)
 
     success = Boolean()
 
     @admin_user
-    def mutate(root, info, id):
-        with Session() as session:
-            employer = session.query(Employer).filter(Employer.id==id).first()
+    async def mutate(root, info, employer_id):
+        session = await get_async_session()
+        result = await session.execute(select(Employer).where(Employer.id == employer_id))
+        employer = result.scalars().first()
 
-            if not employer:
-                raise GraphQLError("Employer not found")
+        if not employer:
+            raise GraphQLError("Employer not found")
             
-            session.delete(employer)
-            session.commit()
-            return DeleteEmployer(success=True)
+        await session.delete(employer)
+        await session.commit()
+        await session.close()
+        return DeleteEmployer(success=True)

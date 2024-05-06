@@ -4,10 +4,10 @@ import jwt
 from app.settings.config import SECRET_KEY, ALGORITHM, TOKEN_EXPIRATION_TIME_IN_MINUTES
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from app.db.database import Session
+from app.db.database import get_async_session
 from app.db.models import User
 from functools import wraps
-
+from sqlalchemy import select
 
 def generate_token(email):
     expiration_time = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_EXPIRATION_TIME_IN_MINUTES)
@@ -34,7 +34,7 @@ def verify_password(password_hash, password):
         raise GraphQLError("Invalid password")
 
 
-def get_authenticated_user(context):
+async def get_authenticated_user(context):
     request_object = context.get('request')
     auth_header = request_object.headers.get('Authorization')
     
@@ -53,8 +53,10 @@ def get_authenticated_user(context):
         if datetime.now(timezone.utc) > datetime.fromtimestamp(payload['exp'], tz=timezone.utc):
             raise GraphQLError("Token has expired")
 
-        with Session() as session:
-            user = session.query(User).filter(User.email==payload.get('sub')).first()
+        session = await get_async_session()
+        result = await session.execute(select(User).where(User.email == payload.get('sub')))
+        user = result.scalars().first()
+        await session.close()
         if not user:
             raise GraphQLError("Could not authenticate user")
         return user
@@ -64,31 +66,31 @@ def get_authenticated_user(context):
 
 def admin_user(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs):
         info = args[1]
-        user = get_authenticated_user(info.context)
+        user = await get_authenticated_user(info.context)
         if user.role != 'admin':
             raise GraphQLError("You are not authorized to perform this action")
-        return func(*args, **kwargs)
+        return await func(*args, **kwargs)
     return wrapper
 
 
 def auth_user(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs):
         info = args[1]
-        get_authenticated_user(info.context)
-        return func(*args, **kwargs)
+        await get_authenticated_user(info.context)
+        return await func(*args, **kwargs)
     return wrapper
 
 
 def auth_user_same_as(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs):
         info = args[1]
-        user = get_authenticated_user(info.context)
+        user = await get_authenticated_user(info.context)
         user_id = kwargs.get("user_id")
         if user.id != user_id:
             raise GraphQLError("You are not authorized to perform this action")
-        return func(*args, **kwargs)
+        return await func(*args, **kwargs)
     return wrapper

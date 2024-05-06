@@ -1,6 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
 
 
 Base = declarative_base()
@@ -12,7 +11,6 @@ class Employer(Base):
     name = Column(String)
     contact_email = Column(String)
     industry = Column(String)
-    jobs = relationship('Job', back_populates='employer', lazy="joined")
 
 
 class Job(Base):
@@ -21,8 +19,6 @@ class Job(Base):
     title = Column(String)
     description = Column(String)
     employer_id = Column(Integer, ForeignKey('employers.id'))
-    employer = relationship('Employer', back_populates='jobs', lazy="joined")
-    applications = relationship("JobApplication", back_populates="job", lazy="joined")
 
 
 class User(Base):
@@ -32,7 +28,6 @@ class User(Base):
     email = Column(String)
     password_hash = Column(String)
     role = Column(String)
-    applications = relationship("JobApplication", back_populates="user", lazy="joined")
 
 
 class JobApplication(Base):
@@ -40,5 +35,3 @@ class JobApplication(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     job_id = Column(Integer, ForeignKey('jobs.id'))
-    user = relationship("User", back_populates="applications", lazy="joined")
-    job = relationship("Job", back_populates="applications", lazy="joined")
