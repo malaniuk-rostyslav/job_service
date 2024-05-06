@@ -19,7 +19,40 @@ class JobObject(ObjectType):
     description = String()
     employer_id = Int()
     employer = Field(lambda: EmployerObject)
+    applications = List(lambda: JobApplicationObject)
 
     @staticmethod
     def resolve_employer(root, info):
         return root.employer
+    
+    @staticmethod
+    def resolve_applications(root, info):
+        return root.applications
+
+
+class UserObject(ObjectType):
+    id = Int()
+    username = String()
+    email = String()
+    role = String()
+    applications = List(lambda: JobApplicationObject)
+
+    @staticmethod
+    def resolve_applications(root, info):
+        return root.applications
+
+
+class JobApplicationObject(ObjectType):
+    id = Int()
+    user_id = Int()
+    job_id = Int()
+    user = Field(UserObject)
+    job = Field(JobObject)
+
+    @staticmethod
+    def resolve_user(root, info):
+        return root.user
+    
+    @staticmethod
+    def resolve_job(root, info):
+        return root.job

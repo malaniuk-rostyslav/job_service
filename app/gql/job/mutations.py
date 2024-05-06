@@ -1,8 +1,10 @@
 from graphene import Mutation, String, Int, Field, Boolean
+from graphql import GraphQLError
 from app.gql.types import JobObject
 from app.db.database import Session
 from app.db.models import Job
-from sqlalchemy.orm import joinedload
+from app.utils import admin_user
+
 
 class AddJob(Mutation):
     class Arguments:
@@ -12,7 +14,7 @@ class AddJob(Mutation):
 
     job = Field(JobObject)
 
-    @staticmethod
+    @admin_user
     def mutate(root, info, title, description, employer_id):
         with Session() as session:
             job = Job(title=title, description=description, employer_id=employer_id)
@@ -31,13 +33,13 @@ class UpdateJob(Mutation):
 
     job = Field(JobObject)
 
-    @staticmethod
+    @admin_user
     def mutate(root, info, job_id, title=None, description=None, employer_id=None):
         with Session() as session:
-            job = session.query(Job).filter(Job.id==job_id).options(joinedload(Job.employer)).first()
+            job = session.query(Job).filter(Job.id==job_id).first()
 
             if not job:
-                raise Exception("Job not found")
+                raise GraphQLError("Job not found")
 
             if title:
                 job.title = title
@@ -57,13 +59,13 @@ class DeleteJob(Mutation):
 
     success = Boolean()
 
-    @staticmethod
+    @admin_user
     def mutate(root, info, id):
         with Session() as session:
             job = session.query(Job).filter(Job.id==id).first()
 
             if not job:
-                raise Exception("Job not found")
+                raise GraphQLError("Job not found")
             
             session.delete(job)
             session.commit()
