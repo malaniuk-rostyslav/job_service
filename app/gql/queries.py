@@ -3,7 +3,7 @@ from app.gql.types import JobObject, EmployerObject, UserObject, JobApplicationO
 from app.db.database import get_async_session
 from app.db.models import Job, Employer, User, JobApplication
 from app.utils import admin_user
-from sqlalchemy import select, outerjoin
+from sqlalchemy import select
 
 
 class Query(ObjectType):

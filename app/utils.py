@@ -9,7 +9,7 @@ from app.db.models import User
 from functools import wraps
 from sqlalchemy import select
 
-def generate_token(email):
+async def generate_token(email):
     expiration_time = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_EXPIRATION_TIME_IN_MINUTES)
 
     payload = {
@@ -21,12 +21,12 @@ def generate_token(email):
     return token
 
 
-def hash_password(password):
+async def hash_password(password):
     ph = PasswordHasher()
     return ph.hash(password)
 
 
-def verify_password(password_hash, password):
+async def verify_password(password_hash, password):
     ph = PasswordHasher()
     try:
         ph.verify(password_hash, password)

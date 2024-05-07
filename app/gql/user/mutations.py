@@ -24,9 +24,9 @@ class LoginUser(Mutation):
         if not user:
             raise GraphQLError("User by this email does not exist")
         
-        verify_password(user.password_hash, password)
+        await verify_password(user.password_hash, password)
         
-        token = generate_token(email)
+        token = await generate_token(email)
 
         return LoginUser(token=token)
     
@@ -51,7 +51,7 @@ class AddUser(Mutation):
         user = result.scalars().first()
         if user:
             raise GraphQLError("A user with this email already exists")
-        password_hash = hash_password(password)
+        password_hash = await hash_password(password)
         user = User(
             username=username,
             email=email,
